@@ -57,3 +57,49 @@ async def split_pdf(file_bytes: bytes, filename: str, ranges: list[int]) -> str:
     finally:
         if os.path.exists(input_path):
             os.remove(input_path)
+
+async def merge_pdfs(file_bytes_list: list[bytes], filenames: list[str]) -> str:
+    """Merges multiple PDFs into one."""
+    unique_id = str(uuid.uuid4())
+    output_path = os.path.join(TEMP_DIR, f"{unique_id}_merged.pdf")
+    
+    try:
+        new_pdf = pikepdf.Pdf.new()
+        temp_files = []
+        for file_bytes in file_bytes_list:
+            temp_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_temp.pdf")
+            temp_files.append(temp_path)
+            with open(temp_path, "wb") as f:
+                f.write(file_bytes)
+            
+            pdf = pikepdf.Pdf.open(temp_path)
+            new_pdf.pages.extend(pdf.pages)
+            
+        new_pdf.save(output_path)
+        return output_path
+    finally:
+        for temp_path in temp_files:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+async def images_to_pdf(file_bytes_list: list[bytes], filenames: list[str]) -> str:
+    """Converts images to a single PDF."""
+    import io
+    from PIL import Image
+    unique_id = str(uuid.uuid4())
+    output_path = os.path.join(TEMP_DIR, f"{unique_id}_images.pdf")
+    
+    try:
+        images = []
+        for file_bytes in file_bytes_list:
+            img = Image.open(io.BytesIO(file_bytes))
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            images.append(img)
+            
+        if images:
+            images[0].save(output_path, save_all=True, append_images=images[1:])
+        return output_path
+    except Exception as e:
+        print(f"Error converting images to pdf: {e}")
+        raise

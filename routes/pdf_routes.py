@@ -45,3 +45,43 @@ async def split_pdf(
         filename=f"split_{file.filename}",
         media_type="application/pdf"
     )
+
+@router.post("/merge")
+async def merge_pdf(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...)
+):
+    file_bytes_list = []
+    filenames = []
+    for file in files:
+        file_bytes_list.append(await file.read())
+        filenames.append(file.filename)
+        
+    output_path = await pdf_service.merge_pdfs(file_bytes_list, filenames)
+    background_tasks.add_task(remove_file, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename="merged_document.pdf",
+        media_type="application/pdf"
+    )
+
+@router.post("/jpg-to-pdf")
+async def jpg_to_pdf(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...)
+):
+    file_bytes_list = []
+    filenames = []
+    for file in files:
+        file_bytes_list.append(await file.read())
+        filenames.append(file.filename)
+        
+    output_path = await pdf_service.images_to_pdf(file_bytes_list, filenames)
+    background_tasks.add_task(remove_file, output_path)
+    
+    return FileResponse(
+        path=output_path,
+        filename="converted_images.pdf",
+        media_type="application/pdf"
+    )
